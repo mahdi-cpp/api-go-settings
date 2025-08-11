@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 )
 
-const rootDir = "/media/mahdi/Cloud/apps"
-const applicationDir = "com.helium.settings"
+const rootDir = "/media/mahdi/Cloud/Happle"
+const applicationDir = "com.helium.settings/payload"
 const usersDir = "users"
 
 func GetPath(file string) string {

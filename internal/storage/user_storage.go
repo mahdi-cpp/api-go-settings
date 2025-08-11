@@ -3,11 +3,9 @@ package storage
 import (
 	"context"
 	"fmt"
-	"github.com/mahdi-cpp/api-go-pkg/collection"
-	"github.com/mahdi-cpp/api-go-pkg/common_models"
+	"github.com/mahdi-cpp/api-go-pkg/collection_controll"
 	"github.com/mahdi-cpp/api-go-pkg/image_loader"
-	"github.com/mahdi-cpp/api-go-pkg/metadata"
-	"github.com/mahdi-cpp/api-go-pkg/thumbnail"
+	"github.com/mahdi-cpp/api-go-pkg/shared_model"
 	"github.com/mahdi-cpp/api-go-settings/internal/domain/model"
 	_ "image/jpeg"
 	_ "image/png"
@@ -18,20 +16,19 @@ import (
 )
 
 type UserStorage struct {
-	mu                  sync.RWMutex // Protects all indexes and maps
-	user                common_models.User
+	mu   sync.RWMutex // Protects all indexes and maps
+	user shared_model.User
+
+	//assets              map[int]*shared_model.PHAsset
+	//metadata            *asset_metadata_manager.AssetMetadataManager
+	//thumbnail           *thumbnail.ThumbnailManager
+
+	AssetManager   *collection_controll.Manager[*shared_model.PHAsset]
+	AlbumManager   *collection_controll.Manager[*model.Album]
+	VillageManager *collection_controll.Manager[*model.Village]
+
 	originalImageLoader *image_loader.ImageLoader
 	tinyImageLoader     *image_loader.ImageLoader
-	assets              map[int]*common_models.PHAsset
-	cameras             map[string]*common_models.PHCollection[model.Camera]
-	AlbumManager        *collection.Manager[*model.Album]
-	TripManager         *collection.Manager[*model.Trip]
-	PersonManager       *collection.Manager[*model.Person]
-	PinnedManager       *collection.Manager[*model.Pinned]
-	SharedAlbumManager  *collection.Manager[*model.SharedAlbum]
-	VillageManager      *collection.Manager[*model.Village]
-	metadata            *metadata.AssetMetadataManager
-	thumbnail           *thumbnail.ThumbnailManager
 	lastID              int
 	lastRebuild         time.Time
 	maintenanceCtx      context.Context
@@ -39,78 +36,14 @@ type UserStorage struct {
 	statsMu             sync.Mutex
 }
 
-//
-//func (userStorage *UserStorage) UploadAsset(userID int, file multipart.File, header *multipart.FileHeader) (*common_models.PHAsset, error) {
-//
-//	// Check file size
-//	//if header.Size > userStorage.config.MaxUploadSize {
-//	//	return nil, ErrFileTooLarge
-//	//}
-//
-//	// Read file content
-//	fileBytes, err := io.ReadAll(file)
-//	if err != nil {
-//		return nil, fmt.Errorf("failed to read file: %w", err)
-//	}
-//
-//	// Handler asset filename
-//	ext := filepath.Ext(header.Filename)
-//	filename := fmt.Sprintf("%d%s", 1, ext)
-//	assetPath := filepath.Join(userStorage.config.AssetsDir, filename)
-//
-//	// Save asset file
-//	if err := os.WriteFile(assetPath, fileBytes, 0644); err != nil {
-//		return nil, fmt.Errorf("failed to save asset: %w", err)
-//	}
-//
-//	// Initialize the ImageExtractor with the path to exiftool
-//	extractor := asset_create.NewMetadataExtractor("/usr/local/bin/exiftool")
-//
-//	// Extract metadata
-//	width, height, camera, err := extractor.ExtractMetadata(assetPath)
-//	if err != nil {
-//		log.Printf("Metadata extraction failed: %v", err)
-//	}
-//	mediaType := asset_create.GetMediaType(ext)
-//
-//	// Handler asset
-//	asset := &common_models.PHAsset{
-//		ID:           userStorage.lastID,
-//		UserID:       userID,
-//		Filename:     filename,
-//		CreationDate: time.Now(),
-//		MediaType:    mediaType,
-//		PixelWidth:   width,
-//		PixelHeight:  height,
-//		CameraModel:  camera,
-//	}
-//
-//	// Save metadata
-//	if err := userStorage.metadata.SaveMetadata(asset); err != nil {
-//		// Clean up asset file if metadata save fails
-//		os.Remove(assetPath)
-//		return nil, fmt.Errorf("failed to save metadata: %w", err)
-//	}
-//
-//	// Add to indexes
-//	//userStorage.addToIndexes(asset)
-//
-//	// Update stats
-//	userStorage.statsMu.Lock()
-//	userStorage.stats.TotalAssets++
-//	userStorage.stats.Uploads24h++
-//	userStorage.statsMu.Unlock()
-//
-//	return asset, nil
-//}
-
-func (userStorage *UserStorage) GetAsset(assetId int) (*common_models.PHAsset, bool) {
-	asset, exists := userStorage.assets[assetId]
-	return asset, exists
+func (userStorage *UserStorage) GetAsset(assetId int) (*shared_model.PHAsset, error) {
+	//asset, exists := userStorage.assets[assetId]
+	asset, err := userStorage.AssetManager.Get(assetId)
+	return asset, err
 }
 
-func (userStorage *UserStorage) GetAllAssets() map[int]*common_models.PHAsset {
-	return userStorage.assets
+func (userStorage *UserStorage) GetAllAssets() ([]*shared_model.PHAsset, error) {
+	return userStorage.AssetManager.GetAll()
 }
 
 //func (userStorage *UserStorage) GetAssetContent(id int) ([]byte, error) {
@@ -124,15 +57,15 @@ func (userStorage *UserStorage) GetAllAssets() map[int]*common_models.PHAsset {
 //	return os.ReadFile(assetPath)
 //}
 
-func (userStorage *UserStorage) UpdateAsset(update common_models.AssetUpdate) (string, error) {
+func (userStorage *UserStorage) UpdateAsset(update shared_model.AssetUpdate) (string, error) {
 
 	userStorage.mu.Lock()
 	defer userStorage.mu.Unlock()
 
 	for _, assetId := range update.AssetIds {
 
-		asset, exists := userStorage.GetAsset(assetId)
-		if !exists {
+		asset, err := userStorage.GetAsset(assetId)
+		if err != nil {
 			continue
 		}
 
@@ -278,10 +211,15 @@ func (userStorage *UserStorage) UpdateAsset(update common_models.AssetUpdate) (s
 
 		asset.ModificationDate = time.Now()
 
-		// Save updated metadata
-		if err := userStorage.metadata.SaveMetadata(asset); err != nil {
+		_, err = userStorage.AssetManager.Update(asset)
+		if err != nil {
 			return "", err
 		}
+
+		// Save updated metadata
+		//if err := userStorage.metadata.SaveMetadata(asset); err != nil {
+		//	return "", err
+		//}
 
 		//for _, asset := range userStorage.assets {
 		//	if asset.ID == asset.ID {
@@ -305,10 +243,6 @@ func (userStorage *UserStorage) UpdateAsset(update common_models.AssetUpdate) (s
 
 func (userStorage *UserStorage) UpdateCollections() {
 	userStorage.prepareAlbums()
-	userStorage.prepareCameras()
-	userStorage.prepareTrips()
-	userStorage.preparePersons()
-	userStorage.preparePinned()
 }
 
 //func (userStorage *UserStorage) GetSystemStats() Stats {
@@ -317,7 +251,7 @@ func (userStorage *UserStorage) UpdateCollections() {
 //	return userStorage.stats
 //}
 
-func (userStorage *UserStorage) FetchAssets(with common_models.PHFetchOptions) ([]*common_models.PHAsset, int, error) {
+func (userStorage *UserStorage) FetchAssets(with shared_model.PHFetchOptions) ([]*shared_model.PHAsset, int, error) {
 
 	userStorage.mu.RLock()
 	defer userStorage.mu.RUnlock()
@@ -328,10 +262,16 @@ func (userStorage *UserStorage) FetchAssets(with common_models.PHFetchOptions) (
 	criteria := assetBuildCriteria(with)
 
 	// Step 2: Find all matching assets (store pointers to original assets)
-	var matches []*common_models.PHAsset
+	var matches []*shared_model.PHAsset
 	totalCount := 0
 
-	for _, asset := range userStorage.assets {
+	assets, err := userStorage.AssetManager.GetAll()
+	if err != nil {
+		fmt.Printf("Error getting all assets: %v\n", err)
+		return nil, 0, err
+	}
+
+	for _, asset := range assets {
 		if criteria(*asset) {
 			matches = append(matches, asset)
 			totalCount++
@@ -383,7 +323,7 @@ func (userStorage *UserStorage) prepareAlbums() {
 
 	for _, album := range items {
 
-		with := common_models.PHFetchOptions{
+		with := shared_model.PHFetchOptions{
 			UserID:     4,
 			Albums:     []int{album.ID},
 			SortBy:     "modificationDate",
@@ -398,191 +338,6 @@ func (userStorage *UserStorage) prepareAlbums() {
 		album.Count = count
 		userStorage.AlbumManager.ItemAssets[album.ID] = assets
 	}
-}
-
-func (userStorage *UserStorage) prepareTrips() {
-
-	items, err := userStorage.TripManager.GetAll()
-	if err != nil {
-	}
-
-	for _, item := range items {
-
-		with := common_models.PHFetchOptions{
-			UserID:     1,
-			Trips:      []int{item.ID},
-			SortBy:     "modificationDate",
-			SortOrder:  "gg",
-			FetchLimit: 2,
-		}
-
-		assets, count, err := userStorage.FetchAssets(with)
-		if err != nil {
-			continue
-		}
-		item.Count = count
-		userStorage.TripManager.ItemAssets[item.ID] = assets
-	}
-}
-
-func (userStorage *UserStorage) preparePersons() {
-
-	items, err := userStorage.PersonManager.GetAll()
-	if err != nil {
-	}
-
-	for _, item := range items {
-
-		with := common_models.PHFetchOptions{
-			UserID:     1,
-			Persons:    []int{item.ID},
-			SortBy:     "modificationDate",
-			SortOrder:  "gg",
-			FetchLimit: 1,
-		}
-
-		assets, count, err := userStorage.FetchAssets(with)
-		if err != nil {
-			continue
-		}
-		item.Count = count
-		userStorage.PersonManager.ItemAssets[item.ID] = assets
-	}
-}
-
-func (userStorage *UserStorage) prepareCameras() {
-
-	//items, err := userStorage.CameraManager.GetAll()
-	//if err != nil {
-	//}
-
-	if userStorage.cameras == nil {
-		userStorage.cameras = map[string]*common_models.PHCollection[model.Camera]{}
-	}
-
-	for _, asset := range userStorage.assets {
-		if asset.CameraModel == "" {
-			continue
-		}
-
-		camera, exists := userStorage.cameras[asset.CameraModel]
-		if exists {
-			camera.Item.Count = camera.Item.Count + 1
-			userStorage.cameras[asset.CameraModel] = camera
-		} else {
-			collection := &common_models.PHCollection[model.Camera]{
-				Item: model.Camera{
-					ID:          1,
-					CameraMake:  asset.CameraMake,
-					CameraModel: asset.CameraModel,
-					Count:       1},
-			}
-			fmt.Println(collection)
-			userStorage.cameras[asset.CameraModel] = collection
-		}
-	}
-
-	//fmt.Println("camera count: ", len(userStorage.cameras))
-
-	for _, collection := range userStorage.cameras {
-
-		with := common_models.PHFetchOptions{
-			UserID:      1,
-			CameraMake:  collection.Item.CameraMake,
-			CameraModel: collection.Item.CameraModel,
-			SortBy:      "modificationDate",
-			SortOrder:   "gg",
-			FetchLimit:  6,
-		}
-
-		assets, _, err := userStorage.FetchAssets(with)
-		if err != nil {
-			continue
-		}
-		collection.Assets = assets
-	}
-}
-
-func (userStorage *UserStorage) preparePinned() {
-
-	items, err := userStorage.PinnedManager.GetAll()
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	for _, item := range items {
-
-		var with *common_models.PHFetchOptions
-
-		switch item.Type {
-		case "camera":
-			with = &common_models.PHFetchOptions{
-				IsCamera:   GetBoolPointer(true),
-				SortBy:     "modificationDate",
-				SortOrder:  "acs",
-				FetchLimit: 1,
-			}
-			break
-		case "screenshot":
-			with = &common_models.PHFetchOptions{
-				IsScreenshot: GetBoolPointer(true),
-				SortBy:       "modificationDate",
-				SortOrder:    "acs",
-				FetchLimit:   1,
-			}
-			break
-		case "favorite":
-			with = &common_models.PHFetchOptions{
-				IsFavorite: GetBoolPointer(true),
-				SortBy:     "modificationDate",
-				SortOrder:  "acs",
-				FetchLimit: 1,
-			}
-			break
-		case "video":
-			with = &common_models.PHFetchOptions{
-				MediaType:  "video",
-				SortBy:     "modificationDate",
-				SortOrder:  "acs",
-				FetchLimit: 1,
-			}
-			break
-		case "map":
-			var assets []*common_models.PHAsset
-			asset := common_models.PHAsset{ID: 12, MediaType: "image", Url: "map", Filename: "map"}
-			assets = append(assets, &asset)
-			userStorage.PinnedManager.ItemAssets[item.ID] = assets
-			break
-		case "album":
-			album, err := userStorage.AlbumManager.Get(item.AlbumID)
-			if err != nil {
-				continue
-			}
-			item.Title = album.Title
-			with = &common_models.PHFetchOptions{
-				Albums:     []int{album.ID},
-				SortBy:     "modificationDate",
-				SortOrder:  "acs",
-				FetchLimit: 1,
-			}
-			break
-		}
-
-		if with == nil || item.Type == "map" {
-			continue
-		}
-
-		assets, count, err := userStorage.FetchAssets(*with)
-		if err != nil {
-			continue
-		}
-		item.Count = count
-		userStorage.PinnedManager.ItemAssets[item.ID] = assets
-	}
-}
-
-func (userStorage *UserStorage) GetAllCameras() map[string]*common_models.PHCollection[model.Camera] {
-	return userStorage.cameras
 }
 
 func GetBoolPointer(b bool) *bool {
@@ -606,9 +361,13 @@ func (userStorage *UserStorage) DeleteAsset(id int) error {
 	//}
 
 	// Delete metadata
-	if err := userStorage.metadata.DeleteMetadata(id); err != nil {
+	err := userStorage.AssetManager.Delete(id)
+	if err != nil {
 		return fmt.Errorf("failed to delete metadata: %w", err)
 	}
+	//if err := userStorage.metadata.DeleteMetadata(id); err != nil {
+	//	return fmt.Errorf("failed to delete metadata: %w", err)
+	//}
 
 	// Delete thumbnail (if exists)
 	//userStorage.thumbnail.DeleteThumbnails(id)
@@ -627,9 +386,9 @@ func (userStorage *UserStorage) DeleteAsset(id int) error {
 	return nil
 }
 
-func assetBuildCriteria(with common_models.PHFetchOptions) assetSearchCriteria[common_models.PHAsset] {
+func assetBuildCriteria(with shared_model.PHFetchOptions) assetSearchCriteria[shared_model.PHAsset] {
 
-	return func(asset common_models.PHAsset) bool {
+	return func(asset shared_model.PHAsset) bool {
 
 		// Filter by UserID (if non-zero)
 		//if with.UserID != 0 && asset.UserID != with.UserID {
@@ -805,7 +564,7 @@ func assetSearch[T any](slice []T, criteria assetSearchCriteria[T]) []IndexedIte
 	return results
 }
 
-func assetSortAssets(assets []*common_models.PHAsset, sortBy, sortOrder string) {
+func assetSortAssets(assets []*shared_model.PHAsset, sortBy, sortOrder string) {
 
 	if sortBy == "" {
 		return // No sorting requested
@@ -851,3 +610,68 @@ func assetSortAssets(assets []*common_models.PHAsset, sortBy, sortOrder string) 
 		}
 	})
 }
+
+//
+//func (userStorage *UserStorage) UploadAsset(userID int, file multipart.File, header *multipart.FileHeader) (*shared_model.PHAsset, error) {
+//
+//	// Check file size
+//	//if header.Size > userStorage.config.MaxUploadSize {
+//	//	return nil, ErrFileTooLarge
+//	//}
+//
+//	// Read file content
+//	fileBytes, err := io.ReadAll(file)
+//	if err != nil {
+//		return nil, fmt.Errorf("failed to read file: %w", err)
+//	}
+//
+//	// Handler asset filename
+//	ext := filepath.Ext(header.Filename)
+//	filename := fmt.Sprintf("%d%s", 1, ext)
+//	assetPath := filepath.Join(userStorage.config.AssetsDir, filename)
+//
+//	// Save asset file
+//	if err := os.WriteFile(assetPath, fileBytes, 0644); err != nil {
+//		return nil, fmt.Errorf("failed to save asset: %w", err)
+//	}
+//
+//	// Initialize the ImageExtractor with the path to exiftool
+//	extractor := asset_create.NewMetadataExtractor("/usr/local/bin/exiftool")
+//
+//	// Extract metadata
+//	width, height, camera, err := extractor.ExtractMetadata(assetPath)
+//	if err != nil {
+//		log.Printf("Metadata extraction failed: %v", err)
+//	}
+//	mediaType := asset_create.GetMediaType(ext)
+//
+//	// Handler asset
+//	asset := &shared_model.PHAsset{
+//		ID:           userStorage.lastID,
+//		UserID:       userID,
+//		Filename:     filename,
+//		CreationDate: time.Now(),
+//		MediaType:    mediaType,
+//		PixelWidth:   width,
+//		PixelHeight:  height,
+//		CameraModel:  camera,
+//	}
+//
+//	// Save metadata
+//	if err := userStorage.metadata.SaveMetadata(asset); err != nil {
+//		// Clean up asset file if metadata save fails
+//		os.Remove(assetPath)
+//		return nil, fmt.Errorf("failed to save metadata: %w", err)
+//	}
+//
+//	// Add to indexes
+//	//userStorage.addToIndexes(asset)
+//
+//	// Update stats
+//	userStorage.statsMu.Lock()
+//	userStorage.stats.TotalAssets++
+//	userStorage.stats.Uploads24h++
+//	userStorage.statsMu.Unlock()
+//
+//	return asset, nil
+//}

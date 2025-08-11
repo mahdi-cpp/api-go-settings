@@ -3,16 +3,16 @@ package handler
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/mahdi-cpp/api-go-pkg/common_models"
+	"github.com/mahdi-cpp/api-go-pkg/shared_model"
 	"github.com/mahdi-cpp/api-go-settings/internal/storage"
 	"net/http"
 )
 
 type SearchHandler struct {
-	userStorageManager *storage.SettingStorageManager
+	userStorageManager *storage.MainStorageManager
 }
 
-func NewSearchHandler(userStorageManager *storage.SettingStorageManager) *SearchHandler {
+func NewSearchHandler(userStorageManager *storage.MainStorageManager) *SearchHandler {
 	return &SearchHandler{userStorageManager: userStorageManager}
 }
 
@@ -24,7 +24,7 @@ func (handler *SearchHandler) Filters(c *gin.Context) {
 		return
 	}
 
-	var with common_models.PHFetchOptions
+	var with shared_model.PHFetchOptions
 	if err := c.ShouldBindJSON(&with); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		fmt.Println("Invalid request")
@@ -44,7 +44,7 @@ func (handler *SearchHandler) Filters(c *gin.Context) {
 
 	fmt.Println("Filters count: ", len(items))
 
-	result := common_models.PHFetchResult[*common_models.PHAsset]{
+	result := shared_model.PHFetchResult[*shared_model.PHAsset]{
 		Items:  items,
 		Total:  total,
 		Limit:  100,
@@ -61,7 +61,7 @@ func (handler *SearchHandler) Search(c *gin.Context) {
 		return
 	}
 
-	var with common_models.PHFetchOptions
+	var with shared_model.PHFetchOptions
 	if err := c.ShouldBindJSON(&with); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
@@ -78,7 +78,7 @@ func (handler *SearchHandler) Search(c *gin.Context) {
 		return
 	}
 
-	result := common_models.PHFetchResult[*common_models.PHAsset]{
+	result := shared_model.PHFetchResult[*shared_model.PHAsset]{
 		Items:  items,
 		Total:  total,
 		Limit:  100,

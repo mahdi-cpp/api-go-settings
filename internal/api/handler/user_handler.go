@@ -2,16 +2,16 @@ package handler
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/mahdi-cpp/api-go-pkg/common_models"
+	"github.com/mahdi-cpp/api-go-pkg/shared_model"
 	"github.com/mahdi-cpp/api-go-settings/internal/storage"
 	"net/http"
 )
 
 type UserHandler struct {
-	settingStorageManager *storage.SettingStorageManager
+	settingStorageManager *storage.MainStorageManager
 }
 
-func NewUserHandler(userStorageManager *storage.SettingStorageManager) *UserHandler {
+func NewUserHandler(userStorageManager *storage.MainStorageManager) *UserHandler {
 	return &UserHandler{
 		settingStorageManager: userStorageManager,
 	}
@@ -25,7 +25,7 @@ func (handler *UserHandler) Create(c *gin.Context) {
 		return
 	}
 
-	var request common_models.UserHandler
+	var request shared_model.UserHandler
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
@@ -36,7 +36,7 @@ func (handler *UserHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 	}
 
-	newItem, err := handler.settingStorageManager.UserManager.Create(&common_models.User{
+	newItem, err := handler.settingStorageManager.UserManager.Create(&shared_model.User{
 		Username:    request.Username,
 		FirstName:   request.FirstName,
 		LastName:    request.LastName,
@@ -48,7 +48,7 @@ func (handler *UserHandler) Create(c *gin.Context) {
 		return
 	}
 
-	//update := common_models.AssetUpdate{AssetIds: request.AssetIds, AddAlbums: []int{newItem.ID}}
+	//update := shared_model.AssetUpdate{AssetIds: request.AssetIds, AddAlbums: []int{newItem.ID}}
 	//_, err = userStorage.UpdateAsset(update)
 	//if err != nil {
 	//	c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -57,7 +57,7 @@ func (handler *UserHandler) Create(c *gin.Context) {
 
 	userStorage.UpdateCollections()
 
-	c.JSON(http.StatusCreated, common_models.CollectionResponse{
+	c.JSON(http.StatusCreated, shared_model.CollectionResponse{
 		ID:    newItem.ID,
 		Title: newItem.Username,
 	})
@@ -71,7 +71,7 @@ func (handler *UserHandler) Update(c *gin.Context) {
 		return
 	}
 
-	var itemHandler common_models.UserHandler
+	var itemHandler shared_model.UserHandler
 	if err := c.ShouldBindJSON(&itemHandler); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
@@ -82,7 +82,7 @@ func (handler *UserHandler) Update(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 	}
 
-	common_models.UpdateUser(item, itemHandler)
+	shared_model.UpdateUser(item, itemHandler)
 
 	item2, err := handler.settingStorageManager.UserManager.Update(item)
 	if err != nil {
@@ -101,7 +101,7 @@ func (handler *UserHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	var item common_models.User
+	var item shared_model.User
 	if err := c.ShouldBindJSON(&item); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
@@ -140,13 +140,13 @@ func (handler *UserHandler) GetUserByID(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 	}
 
-	//result := common_models.PHCollectionList[*common_models.User]{
-	//	Collections: make([]*common_models.PHCollection[*common_models.User], len(items)),
+	//result := shared_model.PHCollectionList[*shared_model.User]{
+	//	Collections: make([]*shared_model.PHCollection[*shared_model.User], len(items)),
 	//}
 	//
 	//for i, item := range items {
 	//	assets, _ := handler.settingStorageManager.UserManager.GetItemAssets(item.ID)
-	//	result.Collections[i] = &common_models.PHCollection[*common_models.User]{
+	//	result.Collections[i] = &shared_model.PHCollection[*shared_model.User]{
 	//		Item:   item,
 	//		Assets: assets,
 	//	}
@@ -157,7 +157,7 @@ func (handler *UserHandler) GetUserByID(c *gin.Context) {
 
 func (handler *UserHandler) GetList(c *gin.Context) {
 
-	//var with common_models.PHFetchOptions
+	//var with shared_model.PHFetchOptions
 	//if err := c.ShouldBindJSON(&with); err != nil {
 	//	c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 	//	fmt.Println("Invalid request")
@@ -181,13 +181,13 @@ func (handler *UserHandler) GetList(c *gin.Context) {
 		return
 	}
 
-	result := common_models.PHCollectionList[*common_models.User]{
-		Collections: make([]*common_models.PHCollection[*common_models.User], len(items)),
+	result := shared_model.PHCollectionList[*shared_model.User]{
+		Collections: make([]*shared_model.PHCollection[*shared_model.User], len(items)),
 	}
 
 	for i, item := range items {
 		assets, _ := handler.settingStorageManager.UserManager.GetItemAssets(item.ID)
-		result.Collections[i] = &common_models.PHCollection[*common_models.User]{
+		result.Collections[i] = &shared_model.PHCollection[*shared_model.User]{
 			Item:   item,
 			Assets: assets,
 		}

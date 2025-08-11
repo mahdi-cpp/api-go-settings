@@ -2,8 +2,9 @@ package handler
 
 import (
 	"fmt"
-	"github.com/mahdi-cpp/api-go-pkg/common_models"
+	"github.com/mahdi-cpp/api-go-pkg/shared_model"
 	"github.com/mahdi-cpp/api-go-settings/internal/storage"
+	"github.com/mahdi-cpp/api-go-settings/internal/utils"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -14,10 +15,10 @@ import (
 )
 
 type AssetHandler struct {
-	userStorageManager *storage.SettingStorageManager
+	userStorageManager *storage.MainStorageManager
 }
 
-func NewAssetHandler(userStorageManager *storage.SettingStorageManager) *AssetHandler {
+func NewAssetHandler(userStorageManager *storage.MainStorageManager) *AssetHandler {
 	return &AssetHandler{userStorageManager: userStorageManager}
 }
 
@@ -41,7 +42,7 @@ func (handler *AssetHandler) Upload(c *gin.Context) {
 	defer file.Close()
 
 	// Handler asset metadata
-	asset := &common_models.PHAsset{
+	asset := &shared_model.PHAsset{
 		UserID:   userID,
 		Filename: header.Filename,
 	}
@@ -76,7 +77,7 @@ func (handler *AssetHandler) Update(c *gin.Context) {
 		return
 	}
 
-	var update common_models.AssetUpdate
+	var update shared_model.AssetUpdate
 	if err := c.ShouldBindJSON(&update); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
@@ -111,7 +112,7 @@ func (handler *AssetHandler) UpdateAll(c *gin.Context) {
 		return
 	}
 
-	var update common_models.AssetUpdate
+	var update shared_model.AssetUpdate
 	if err := c.ShouldBindJSON(&update); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
@@ -122,7 +123,12 @@ func (handler *AssetHandler) UpdateAll(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 	}
 
-	allAssets := userStorage.GetAllAssets()
+	allAssets, err := userStorage.GetAllAssets()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	for _, asset := range allAssets {
 		update.AssetIds = append(update.AssetIds, asset.ID)
 	}
@@ -162,8 +168,8 @@ func (handler *AssetHandler) Get(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 	}
 
-	asset, exists := userStorage.GetAsset(id)
-	if !exists {
+	asset, err := userStorage.GetAsset(id)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Asset not found"})
 		return
 	}
@@ -194,10 +200,10 @@ func (handler *AssetHandler) Search(c *gin.Context) {
 		}
 	}
 
-	filters := common_models.PHFetchOptions{
+	filters := shared_model.PHFetchOptions{
 		UserID:    userID,
 		Query:     query,
-		MediaType: common_models.MediaType(mediaType),
+		MediaType: shared_model.MediaType(mediaType),
 	}
 
 	if len(dateRange) > 0 {
@@ -228,7 +234,7 @@ func (handler *AssetHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	var request common_models.AssetDelete
+	var request shared_model.AssetDelete
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
@@ -257,7 +263,7 @@ func (handler *AssetHandler) Filters(c *gin.Context) {
 		return
 	}
 
-	var with common_models.PHFetchOptions
+	var with shared_model.PHFetchOptions
 	if err := c.ShouldBindJSON(&with); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		fmt.Println("Invalid request")
@@ -277,7 +283,7 @@ func (handler *AssetHandler) Filters(c *gin.Context) {
 
 	fmt.Println("Filters count: ", len(items))
 
-	result := common_models.PHFetchResult[*common_models.PHAsset]{
+	result := shared_model.PHFetchResult[*shared_model.PHAsset]{
 		Items:  items,
 		Total:  total,
 		Limit:  100,
@@ -300,7 +306,7 @@ func (handler *AssetHandler) OriginalDownload(c *gin.Context) {
 	filename := c.Param("filename")
 	filepath2 := filepath.Join("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets", filename)
 
-	fileSize, err := storage.GetFileSize(filepath2)
+	fileSize, err := utils.GetFileSize(filepath2)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{"error": "Failed to get file size"})
 		return

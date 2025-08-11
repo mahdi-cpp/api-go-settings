@@ -3,17 +3,17 @@ package handler
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/mahdi-cpp/api-go-pkg/common_models"
+	"github.com/mahdi-cpp/api-go-pkg/shared_model"
 	"github.com/mahdi-cpp/api-go-settings/internal/domain/model"
 	"github.com/mahdi-cpp/api-go-settings/internal/storage"
 	"net/http"
 )
 
 type AlbumHandler struct {
-	userStorageManager *storage.SettingStorageManager
+	userStorageManager *storage.MainStorageManager
 }
 
-func NewAlbumHandler(userStorageManager *storage.SettingStorageManager) *AlbumHandler {
+func NewAlbumHandler(userStorageManager *storage.MainStorageManager) *AlbumHandler {
 	return &AlbumHandler{
 		userStorageManager: userStorageManager,
 	}
@@ -27,7 +27,7 @@ func (handler *AlbumHandler) Create(c *gin.Context) {
 		return
 	}
 
-	var request common_models.CollectionRequest
+	var request shared_model.CollectionRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
@@ -44,7 +44,7 @@ func (handler *AlbumHandler) Create(c *gin.Context) {
 		return
 	}
 
-	update := common_models.AssetUpdate{AssetIds: request.AssetIds, AddAlbums: []int{newItem.ID}}
+	update := shared_model.AssetUpdate{AssetIds: request.AssetIds, AddAlbums: []int{newItem.ID}}
 	_, err = userStorage.UpdateAsset(update)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -53,7 +53,7 @@ func (handler *AlbumHandler) Create(c *gin.Context) {
 
 	userStorage.UpdateCollections()
 
-	c.JSON(http.StatusCreated, common_models.CollectionResponse{
+	c.JSON(http.StatusCreated, shared_model.CollectionResponse{
 		ID:    newItem.ID,
 		Title: newItem.Title,
 	})
@@ -152,7 +152,7 @@ func (handler *AlbumHandler) GetListV2(c *gin.Context) {
 		return
 	}
 
-	var with common_models.PHFetchOptions
+	var with shared_model.PHFetchOptions
 	if err := c.ShouldBindJSON(&with); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		fmt.Println("Invalid request")
@@ -170,13 +170,13 @@ func (handler *AlbumHandler) GetListV2(c *gin.Context) {
 		return
 	}
 
-	result := common_models.PHCollectionList[*model.Album]{
-		Collections: make([]*common_models.PHCollection[*model.Album], len(items)),
+	result := shared_model.PHCollectionList[*model.Album]{
+		Collections: make([]*shared_model.PHCollection[*model.Album], len(items)),
 	}
 
 	for i, item := range items {
 		assets, _ := userStorage.AlbumManager.GetItemAssets(item.ID)
-		result.Collections[i] = &common_models.PHCollection[*model.Album]{
+		result.Collections[i] = &shared_model.PHCollection[*model.Album]{
 			Item:   item,
 			Assets: assets,
 		}
