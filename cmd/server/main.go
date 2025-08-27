@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/mahdi-cpp/api-go-settings/internal/api/handler"
-	"github.com/mahdi-cpp/api-go-settings/internal/storage"
 	"log"
+
+	"github.com/mahdi-cpp/api-go-settings/internal/api/handler"
+	"github.com/mahdi-cpp/api-go-settings/internal/application"
 )
 
 func main() {

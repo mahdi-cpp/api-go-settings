@@ -5,9 +5,11 @@ import (
 	"path/filepath"
 )
 
-const rootDir = "/media/mahdi/Cloud/Happle"
-const applicationDir = "com.helium.settings/payload"
+const rootDir = "/opt/iris/"
+const applicationDir = "com.iris.settings"
 const usersDir = "users"
+
+const versionCode = 2
 
 func GetPath(file string) string {
 	return filepath.Join(rootDir, applicationDir, file)
