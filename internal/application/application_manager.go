@@ -9,18 +9,18 @@ import (
 
 type AppManager struct {
 	mu                   sync.RWMutex
-	iconImageLoader      *image_loader.ImageLoader
-	originalImageLoader  *image_loader.ImageLoader
-	thumbnailImageLoader *image_loader.ImageLoader
+	IconImageLoader      *image_loader.ImageLoader
+	OriginalImageLoader  *image_loader.ImageLoader
+	ThumbnailImageLoader *image_loader.ImageLoader
 }
 
 func NewAppManager() (*AppManager, error) {
 
 	manager := &AppManager{}
 
-	manager.iconImageLoader = image_loader.NewImageLoader(5000, config.GetPath(""), 0)
-	manager.originalImageLoader = image_loader.NewImageLoader(100, config.GetPath(""), 0)
-	manager.thumbnailImageLoader = image_loader.NewImageLoader(5000, config.GetPath(""), 0)
+	manager.IconImageLoader = image_loader.NewImageLoader(5000, config.GetRootDir(), 0)
+	manager.OriginalImageLoader = image_loader.NewImageLoader(100, config.GetRootDir(), 0)
+	manager.ThumbnailImageLoader = image_loader.NewImageLoader(5000, config.GetRootDir(), 0)
 
 	return manager, nil
 }
