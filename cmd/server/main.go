@@ -22,7 +22,7 @@ func main() {
 
 func routDownloadHandler(userHandler *handler.DownloadHandler) {
 
-	api := router.Group("/api/v1/download")
+	api := router.Group("/api/v1/download_")
 
 	api.GET("original/*filename", userHandler.ImageOriginal)
 	api.GET("thumbnail/*filename", userHandler.ImageThumbnail)
