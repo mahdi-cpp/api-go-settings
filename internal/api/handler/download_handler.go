@@ -1,6 +1,5 @@
 package handler
 
-import "C"
 import (
 	"log"
 	"net/http"
@@ -34,10 +33,11 @@ func NewDownloadHandler(manager *application.AppManager) *DownloadHandler {
 //     header (`image/jpeg`, `image/png`, etc.) and write the raw image data to the
 //     response body, which is what a browser expects for an image request.
 
-// http://localhost:50000/api/v1/download/thumbnail/com.iris.photos/users/01/assets/0198c111-0f9d-74f6-ab2e-6ce665ec29c6.jpg
-//												    com.iris.photos/users/01/assets/0198c111-0f9d-74f6-ab2e-6ce665ec29c6.jpg
+// http://localhost:50000/api/v1/download/thumbnail/com.iris.photos/users/018f3a8b-1b32-729a-f7e5-5467c1b2d3e4/assets/0198c111-0f9d-74f6-ab2e-6ce665ec29c6.jpg
+//												    com.iris.photos/users/018f3a8b-1b32-729a-f7e5-5467c1b2d3e4/assets/0198c111-0f9d-74f6-ab2e-6ce665ec29c6.jpg
 
 func (handler *DownloadHandler) ImageThumbnail(c *gin.Context) {
+
 	// The full path of the image is extracted from the URL parameters.
 	// For example, if the route is "/thumbnail/*filename", and the URL is
 	// "/thumbnail/images/my-image.jpg", fullPath will be "images/my-image.jpg".

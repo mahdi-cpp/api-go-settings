@@ -5,9 +5,12 @@ import (
 
 	"github.com/mahdi-cpp/api-go-settings/internal/api/handler"
 	"github.com/mahdi-cpp/api-go-settings/internal/application"
+	borker "github.com/mahdi-cpp/api-go-settings/internal/broker"
 )
 
 func main() {
+
+	go borker.StartRespBroker()
 
 	newAppManager, err := application.NewAppManager()
 	if err != nil {
@@ -22,7 +25,7 @@ func main() {
 
 func routDownloadHandler(userHandler *handler.DownloadHandler) {
 
-	api := router.Group("/api/v1/download_")
+	api := router.Group("/api/v1/download")
 
 	api.GET("original/*filename", userHandler.ImageOriginal)
 	api.GET("thumbnail/*filename", userHandler.ImageThumbnail)
