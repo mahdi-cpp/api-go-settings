@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -36,7 +37,7 @@ func startServer(router *gin.Engine) {
 	// Run server in a goroutine
 	go func() {
 		log.Printf("Server starting on %s", srv.Addr)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("Server failed: %v", err)
 		}
 	}()

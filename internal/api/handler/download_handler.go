@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/gin-gonic/gin"
-	application "github.com/mahdi-cpp/api-go-settings/internal/application"
+	"github.com/mahdi-cpp/api-go-settings/internal/application"
 )
 
 type DownloadHandler struct {
@@ -33,8 +33,49 @@ func NewDownloadHandler(manager *application.AppManager) *DownloadHandler {
 //     header (`image/jpeg`, `image/png`, etc.) and write the raw image data to the
 //     response body, which is what a browser expects for an image request.
 
-// http://localhost:50000/api/v1/download/thumbnail/com.iris.photos/users/018f3a8b-1b32-729a-f7e5-5467c1b2d3e4/assets/0198c111-0f9d-74f6-ab2e-6ce665ec29c6.jpg
-//												    com.iris.photos/users/018f3a8b-1b32-729a-f7e5-5467c1b2d3e4/assets/0198c111-0f9d-74f6-ab2e-6ce665ec29c6.jpg
+// http://localhost:50000/api/v1/download/original
+// -----------------------------------------------/com.iris.photos
+// ---------------------------------------------------------------/users/018f3a8b-1b32-729a-f7e5-5467c1b2d3e4/assets/0198c111-0f9d-74f6-ab2e-6ce665ec29c6.jpg
+// http://localhost:50000/api/v1/download/original/com.iris.photos/users/018f3a8b-1b32-729a-f7e5-5467c1b2d3e4/assets/0198c111-0f9d-74f6-ab2e-6ce665ec29c6.jpg
+
+func (handler *DownloadHandler) ImageOriginal(c *gin.Context) {
+
+	fullPath := c.Param("filename")
+
+	if fullPath == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "filename parameter is missing"})
+		return
+	}
+	imageBytes, err := handler.manager.OriginalImageLoader.LoadImage(c, fullPath)
+	if err != nil {
+		log.Printf("Error loading image: %v", err)
+		// Return a 404 if the image is not found, or a 500 for other errors.
+		// A real implementation might check the error type to be more specific.
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not load image"})
+		return
+	}
+
+	ext := filepath.Ext(fullPath)
+	contentType := "application/octet-stream" // Default MIME type
+	switch ext {
+	case ".jpg", ".jpeg":
+		contentType = "image/jpeg"
+	case ".png":
+		contentType = "image/png"
+	case ".gif":
+		contentType = "image/gif"
+	case ".svg":
+		contentType = "image/svg+xml"
+	}
+
+	c.Data(http.StatusOK, contentType, imageBytes)
+}
+
+// http://localhost:50000/api/v1/download/
+// ---------------------------------------thumbnail
+// ------------------------------------------------/com.iris.photos
+// ----------------------------------------------------------------/users/018f3a8b-1b32-729a-f7e5-5467c1b2d3e4/assets/thumbnails/0198c111-0f9d-74f6-ab2e-6ce665ec29c6_270.jpg
+// http://localhost:50000/api/v1/download/thumbnail/com.iris.photos/users/018f3a8b-1b32-729a-f7e5-5467c1b2d3e4/assets/thumbnails/0198c111-0f9d-74f6-ab2e-6ce665ec29c6_270.jpg
 
 func (handler *DownloadHandler) ImageThumbnail(c *gin.Context) {
 
@@ -79,7 +120,12 @@ func (handler *DownloadHandler) ImageThumbnail(c *gin.Context) {
 	c.Data(http.StatusOK, contentType, imageBytes)
 }
 
-func (handler *DownloadHandler) ImageOriginal(c *gin.Context) {
+// http://localhost:50000/api/v1/download/icon
+// -------------------------------------------/com.iris.photos
+// -----------------------------------------------------------/res/drawable/icons8-keyboard-100.png
+// http://localhost:50000/api/v1/download/icon/com.iris.photos/res/drawable/icons8-keyboard-100.png
+
+func (handler *DownloadHandler) ImageIcons(c *gin.Context) {
 
 	fullPath := c.Param("filename")
 
@@ -87,7 +133,7 @@ func (handler *DownloadHandler) ImageOriginal(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "filename parameter is missing"})
 		return
 	}
-	imageBytes, err := handler.manager.OriginalImageLoader.LoadImage(c, fullPath)
+	imageBytes, err := handler.manager.IconImageLoader.LoadImage(c, fullPath)
 	if err != nil {
 		log.Printf("Error loading image: %v", err)
 		// Return a 404 if the image is not found, or a 500 for other errors.

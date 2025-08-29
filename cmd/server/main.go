@@ -29,4 +29,5 @@ func routDownloadHandler(userHandler *handler.DownloadHandler) {
 
 	api.GET("original/*filename", userHandler.ImageOriginal)
 	api.GET("thumbnail/*filename", userHandler.ImageThumbnail)
+	api.GET("icon/*filename", userHandler.ImageIcons)
 }
