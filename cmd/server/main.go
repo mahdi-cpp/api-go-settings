@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/mahdi-cpp/api-go-settings/internal/api/handler"
+	"github.com/mahdi-cpp/api-go-settings/internal/api/handler_v2"
 	"github.com/mahdi-cpp/api-go-settings/internal/application"
 	borker "github.com/mahdi-cpp/api-go-settings/internal/broker"
 )
@@ -17,13 +17,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	downloadHandler := handler.NewDownloadHandler(newAppManager)
+	downloadHandler := handler_v2.NewDownloadHandler(newAppManager)
 	routDownloadHandler(downloadHandler)
 
 	startServer(router)
 }
 
-func routDownloadHandler(userHandler *handler.DownloadHandler) {
+func routDownloadHandler(userHandler *handler_v2.DownloadHandler) {
 
 	api := router.Group("/api/v1/download")
 
