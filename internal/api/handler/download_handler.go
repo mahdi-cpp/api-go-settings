@@ -111,3 +111,36 @@ func (handler *DownloadHandler) ImageOriginal(c *gin.Context) {
 
 	c.Data(http.StatusOK, contentType, imageBytes)
 }
+
+func (handler *DownloadHandler) ImageIcon(c *gin.Context) {
+
+	fullPath := c.Param("filename")
+
+	if fullPath == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "filename parameter is missing"})
+		return
+	}
+	imageBytes, err := handler.manager.IconImageLoader.LoadImage(c, fullPath)
+	if err != nil {
+		log.Printf("Error loading image: %v", err)
+		// Return a 404 if the image is not found, or a 500 for other errors.
+		// A real implementation might check the error type to be more specific.
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not load image"})
+		return
+	}
+
+	ext := filepath.Ext(fullPath)
+	contentType := "application/octet-stream" // Default MIME type
+	switch ext {
+	case ".jpg", ".jpeg":
+		contentType = "image/jpeg"
+	case ".png":
+		contentType = "image/png"
+	case ".gif":
+		contentType = "image/gif"
+	case ".svg":
+		contentType = "image/svg+xml"
+	}
+
+	c.Data(http.StatusOK, contentType, imageBytes)
+}
