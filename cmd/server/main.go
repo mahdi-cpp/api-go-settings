@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mahdi-cpp/api-go-settings/internal/api/handler_v2"
+	"github.com/mahdi-cpp/api-go-settings/internal/api/handler"
 	"github.com/mahdi-cpp/api-go-settings/internal/application"
 	borker "github.com/mahdi-cpp/api-go-settings/internal/broker"
 )
@@ -17,7 +17,7 @@ func main() {
 	router.LoadHTMLGlob("/app/tmp/templates/*")
 
 	// Create upload handler
-	uploadHandler := &handler_v2.UploadHandler{
+	uploadHandler := &handler.UploadHandler{
 		UploadDir: "/app/tmp/uploads",
 	}
 	// Setup routes
@@ -28,13 +28,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	downloadHandler := handler_v2.NewDownloadHandler(newAppManager)
+	downloadHandler := handler.NewDownloadHandler(newAppManager)
 	routDownloadHandler(downloadHandler)
 
 	startServer(router)
 }
 
-func setupRoutes(router *gin.Engine, uploadHandler *handler_v2.UploadHandler) {
+func setupRoutes(router *gin.Engine, uploadHandler *handler.UploadHandler) {
 	// Serve upload form
 	router.GET("/", func(c *gin.Context) {
 		c.HTML(200, "index.html", nil)
@@ -44,7 +44,7 @@ func setupRoutes(router *gin.Engine, uploadHandler *handler_v2.UploadHandler) {
 	routUploadHandler(router, uploadHandler)
 }
 
-func routUploadHandler(router *gin.Engine, uploadHandler *handler_v2.UploadHandler) {
+func routUploadHandler(router *gin.Engine, uploadHandler *handler.UploadHandler) {
 	api := router.Group("/api/v1/upload")
 
 	api.POST("/jpeg", uploadHandler.UploadJPEG)
@@ -52,7 +52,7 @@ func routUploadHandler(router *gin.Engine, uploadHandler *handler_v2.UploadHandl
 	api.GET("/files", uploadHandler.ListFiles)
 }
 
-func routDownloadHandler(userHandler *handler_v2.DownloadHandler) {
+func routDownloadHandler(userHandler *handler.DownloadHandler) {
 
 	api := router.Group("/api/v1/download")
 

@@ -1,16 +1,21 @@
-package handler_v2
+package handler
 
 import (
 	"fmt"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
+	"github.com/cshum/vipsgen/vips"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/mahdi-cpp/api-go-settings/internal/thumbnail"
 )
+
+//https://chat.deepseek.com/a/chat/s/913cf162-1ad1-4857-8048-2990d3c959a4
 
 type UploadHandler struct {
 	UploadDir string
@@ -26,6 +31,9 @@ type UploadResponse struct {
 
 func (h *UploadHandler) UploadJPEG(c *gin.Context) {
 
+	vips.Startup(nil)
+	defer vips.Shutdown()
+
 	// Single file upload
 	file, err := c.FormFile("file")
 	if err != nil {
@@ -38,24 +46,25 @@ func (h *UploadHandler) UploadJPEG(c *gin.Context) {
 
 	// Check if it's a JPEG
 	if !isJPEG(file) {
-		c.JSON(http.StatusBadRequest, UploadResponse{
-			Message: "Only JPEG files are allowed",
-			Errors:  []string{"Invalid file type"},
-		})
+		c.JSON(http.StatusBadRequest, UploadResponse{Message: "Only JPEG files are allowed", Errors: []string{"Invalid file type"}})
 		return
 	}
 
 	// Generate unique filename
-	uniqueName := generateUniqueFilename(file.Filename)
+	uniqueName, err := generateUniqueFilename()
 	dst := filepath.Join(h.UploadDir, uniqueName)
 
 	// Save the file
-	if err := c.SaveUploadedFile(file, dst); err != nil {
-		c.JSON(http.StatusInternalServerError, UploadResponse{
-			Message: "Failed to save file",
-			Errors:  []string{err.Error()},
-		})
+	if err := c.SaveUploadedFile(file, dst+".jpg"); err != nil {
+		c.JSON(http.StatusInternalServerError, UploadResponse{Message: "Failed to save file", Errors: []string{err.Error()}})
 		return
+	}
+
+	fmt.Println("file.Filename: ", file.Filename)
+	fmt.Println("dst", dst)
+	if err := thumbnail.CreateSingleThumbnail(dst); err != nil {
+		c.JSON(http.StatusInternalServerError, UploadResponse{Message: "Failed to create thumbnail file", Errors: []string{err.Error()}})
+		log.Fatalf("An error occurred during thumbnail creation: %v", err)
 	}
 
 	c.JSON(http.StatusOK, UploadResponse{
@@ -89,7 +98,10 @@ func (h *UploadHandler) UploadMultiple(c *gin.Context) {
 		}
 
 		// Generate unique filename
-		uniqueName := generateUniqueFilename(file.Filename)
+		uniqueName, err := generateUniqueFilename()
+		if err != nil {
+			return
+		}
 		dst := filepath.Join(h.UploadDir, uniqueName)
 
 		// Save the file
@@ -148,11 +160,14 @@ func isJPEG(file *multipart.FileHeader) bool {
 	return ext == ".jpg" || ext == ".jpeg"
 }
 
-func generateUniqueFilename(original string) string {
-	ext := filepath.Ext(original)
-	name := strings.TrimSuffix(original, ext)
-	timestamp := time.Now().Format("20060102150405")
-	return fmt.Sprintf("%s_%s%s", name, timestamp, ext)
+func generateUniqueFilename() (string, error) {
+
+	u7, err2 := uuid.NewV7()
+	if err2 != nil {
+		return "", fmt.Errorf("error generating UUIDv7: %w", err2)
+	}
+
+	return u7.String(), nil
 }
 
 func getJPEGFiles(dir string) ([]string, error) {

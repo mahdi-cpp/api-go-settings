@@ -15,7 +15,7 @@ import (
 )
 
 var router = gin.Default()
-var port = 50000
+var port = 50150
 
 func initGin() {
 

@@ -1,4 +1,4 @@
-package main
+package thumbnail
 
 import (
 	"fmt"
@@ -32,14 +32,28 @@ func main() {
 	defer vips.Shutdown()
 
 	start := time.Now()
-	if err := createThumbnails(); err != nil {
+	if err := CreateThumbnails(); err != nil {
 		log.Fatalf("An error occurred during thumbnail creation: %v", err)
 	}
 	elapsed := time.Since(start)
 	fmt.Printf("Thumbnail creation took %s to run.\n", elapsed)
 }
 
-func createThumbnails() error {
+func CreateSingleThumbnail(src string) error {
+
+	_, err := os.ReadFile(src + ".jpg")
+	if err != nil {
+		return fmt.Errorf("failed to read file: %w", err)
+	}
+
+	if err := processImage(src, "/app/tmp/ali/a_270.jpg"); err != nil {
+		log.Printf("Error processing %s: %v", src, err)
+	}
+
+	return nil
+}
+
+func CreateThumbnails() error {
 
 	basePath := filepath.Join("/app/iris/com.iris.photos/users", userID, "zz")
 	thumbPath := filepath.Join(basePath, "thumbnails")

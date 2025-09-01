@@ -4,7 +4,7 @@ import (
 	"sync"
 
 	"github.com/mahdi-cpp/api-go-pkg/image_loader"
-	"github.com/mahdi-cpp/api-go-settings/config"
+	"github.com/mahdi-cpp/api-go-settings/internal/config"
 )
 
 type AppManager struct {
