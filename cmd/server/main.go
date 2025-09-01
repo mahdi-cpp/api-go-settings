@@ -6,12 +6,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/mahdi-cpp/api-go-settings/internal/api/handler"
 	"github.com/mahdi-cpp/api-go-settings/internal/application"
-	borker "github.com/mahdi-cpp/api-go-settings/internal/broker"
 )
 
 func main() {
-
-	go borker.StartRespBroker()
 
 	// Load HTML templates
 	router.LoadHTMLGlob("/app/tmp/templates/*")

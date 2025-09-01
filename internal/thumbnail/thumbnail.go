@@ -26,28 +26,15 @@ func isImageFile(entry os.DirEntry) bool {
 			strings.HasSuffix(name, ".png"))
 }
 
-func main() {
+func CreateSingleThumbnail(src string, fileName string) error {
 
-	vips.Startup(nil)
-	defer vips.Shutdown()
-
-	start := time.Now()
-	if err := CreateThumbnails(); err != nil {
-		log.Fatalf("An error occurred during thumbnail creation: %v", err)
-	}
-	elapsed := time.Since(start)
-	fmt.Printf("Thumbnail creation took %s to run.\n", elapsed)
-}
-
-func CreateSingleThumbnail(src string) error {
-
-	_, err := os.ReadFile(src + ".jpg")
+	_, err := os.ReadFile(src)
 	if err != nil {
 		return fmt.Errorf("failed to read file: %w", err)
 	}
 
-	if err := processImage(src, "/app/tmp/ali/a_270.jpg"); err != nil {
-		log.Printf("Error processing %s: %v", src, err)
+	if err := processImage(src, "app/tmp/ali/"+fileName); err != nil {
+		log.Printf("failed create single thumbnail %s: %v", src, err)
 	}
 
 	return nil
@@ -212,4 +199,17 @@ func processImage(filePath string, savePath string) error {
 
 	log.Printf("Successfully created thumbnail for %s", filepath.Base(filePath))
 	return nil
+}
+
+func main() {
+
+	vips.Startup(nil)
+	defer vips.Shutdown()
+
+	start := time.Now()
+	if err := CreateThumbnails(); err != nil {
+		log.Fatalf("An error occurred during thumbnail creation: %v", err)
+	}
+	elapsed := time.Since(start)
+	fmt.Printf("Thumbnail creation took %s to run.\n", elapsed)
 }

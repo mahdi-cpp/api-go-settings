@@ -51,27 +51,25 @@ func (h *UploadHandler) UploadJPEG(c *gin.Context) {
 	}
 
 	// Generate unique filename
-	uniqueName, err := generateUniqueFilename()
-	dst := filepath.Join(h.UploadDir, uniqueName)
+	uuidName, err := generateUniqueFilename()
+	fileDirectory := filepath.Join(h.UploadDir, uuidName+".jpg")
 
 	// Save the file
-	if err := c.SaveUploadedFile(file, dst+".jpg"); err != nil {
+	if err := c.SaveUploadedFile(file, fileDirectory); err != nil {
 		c.JSON(http.StatusInternalServerError, UploadResponse{Message: "Failed to save file", Errors: []string{err.Error()}})
 		return
 	}
 
-	fmt.Println("file.Filename: ", file.Filename)
-	fmt.Println("dst", dst)
-	if err := thumbnail.CreateSingleThumbnail(dst); err != nil {
+	if err := thumbnail.CreateSingleThumbnail(fileDirectory, uuidName+".jpg"); err != nil {
 		c.JSON(http.StatusInternalServerError, UploadResponse{Message: "Failed to create thumbnail file", Errors: []string{err.Error()}})
 		log.Fatalf("An error occurred during thumbnail creation: %v", err)
 	}
 
 	c.JSON(http.StatusOK, UploadResponse{
 		Message:  "File uploaded successfully",
-		Filename: uniqueName,
+		Filename: uuidName,
 		Size:     file.Size,
-		URL:      "/uploads/" + uniqueName,
+		URL:      "/uploads/" + uuidName,
 	})
 }
 
